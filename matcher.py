@@ -11,9 +11,6 @@ Kept dependency-light (numpy + scipy + python_speech_features) and readable
 on purpose -- this is the teaching core, and it has to run on a Raspberry Pi.
 """
 
-import glob
-import os
-
 import numpy as np
 from scipy.io import wavfile
 from scipy.spatial.distance import cdist
@@ -97,11 +94,6 @@ def dtw_distance(a, b):
 def features_for(path):
     """Convenience: path -> feature matrix."""
     return extract_features(load_wav(path))
-
-
-def load_sentinels(root="assets/sentinels"):
-    """Enroll every WAV under `root` as a reference feature matrix."""
-    return [features_for(f) for f in sorted(glob.glob(os.path.join(root, "*.wav")))]
 
 
 def match(feat, sentinels, threshold=THRESHOLD):

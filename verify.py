@@ -1,34 +1,39 @@
-"""Verify one clip against the enrolled sentinels -- the button-1 (unlock) path.
+"""Verify an unlock attempt against one or more sentinels -- the button-1 path.
 
-    python verify.py assets/positives/pos_01.wav        # a match -> exit 0
-    python verify.py assets/negatives/neg_01.wav        # no match -> exit 1
-    python verify.py some_clip.wav 22                    # override the threshold
+    uv run python verify.py --sentinel good.wav --attempt try.wav
+    uv run python verify.py --sentinel a.wav --sentinel b.wav --attempt try.wav
 
-Takes a single WAV (mono 16 kHz, the format record.py writes), scores it against
-every sentinel in assets/sentinels/, and reports whether it's within threshold.
-Exit code is 0 on a match, 1 on no match -- so a caller (a shell script, or GPIO
-glue on the Pi) can drive the lock off the return code without parsing output.
+Both --sentinel (repeatable, one per known-good sound) and --attempt are WAV
+files (mono 16 kHz, the format record.py writes). Exit code is 0 when the
+attempt matches a sentinel within threshold, 1 when it does not -- so a caller
+(a shell script, or GPIO glue on the Pi) can drive the lock off the return code
+alone, without parsing the printed line.
 """
 
+import argparse
 import sys
 
-from matcher import features_for, load_sentinels, match, THRESHOLD
+from matcher import features_for, match, THRESHOLD
 
 
 def main():
-    if len(sys.argv) < 2:
-        raise SystemExit("usage: python verify.py <clip.wav> [threshold]")
-    clip = sys.argv[1]
-    threshold = float(sys.argv[2]) if len(sys.argv) > 2 else THRESHOLD
+    p = argparse.ArgumentParser(
+        description="Verify an unlock attempt against sentinel sound(s).")
+    p.add_argument("--sentinel", action="append", required=True, metavar="WAV",
+                   help="a known-good sound; pass repeatedly for multiple sentinels")
+    p.add_argument("--attempt", required=True, metavar="WAV",
+                   help="the unlock attempt to verify")
+    p.add_argument("--threshold", type=float, default=THRESHOLD, metavar="D",
+                   help=f"DTW distance cutoff (default {THRESHOLD})")
+    args = p.parse_args()
 
-    sentinels = load_sentinels()
-    if not sentinels:
-        raise SystemExit("No sentinels enrolled -- record one to assets/sentinels/ first.")
+    sentinels = [features_for(s) for s in args.sentinel]
+    is_match, dist = match(features_for(args.attempt), sentinels, args.threshold)
 
-    is_match, dist = match(features_for(clip), sentinels, threshold)
     verdict = "MATCH -- unlock" if is_match else "no match -- stay locked"
-    print(f"{clip}")
-    print(f"  nearest distance {dist:.2f}   threshold {threshold:.1f}   -> {verdict}")
+    print(f"attempt {args.attempt}")
+    print(f"  nearest of {len(sentinels)} sentinel(s): {dist:.2f}   "
+          f"threshold {args.threshold:.1f}   -> {verdict}")
     return 0 if is_match else 1
 
 
