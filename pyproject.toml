@@ -1,0 +1,12 @@
+[project]
+name = "sound-recognition"
+version = "0.1.0"
+description = "Recognize sounds matching a known-good set; a component for a sound-based lock."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.5.1",
+    "scipy>=1.18.0",
+    "python_speech_features>=0.6",
+    "sounddevice>=0.5.5",
+]
